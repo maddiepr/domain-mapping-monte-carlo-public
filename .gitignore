@@ -205,3 +205,34 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# -------------------------
+# HPC / Longleaf Specific
+# -------------------------
+
+# SLURM job outputs
+logs/
+*.log
+slurm-*.out
+slurm-*.err
+
+# Simulation data & results
+data/
+results/
+*.npz
+*.npy
+*.csv
+*.dat
+*.txt
+
+# Fortran build artifacts
+*.o
+*.mod
+*.exe
+*.out
+
+# Parameter files (generated during runs)
+params_list.txt
+
+# Editor/OS extras
+.DS_Store
