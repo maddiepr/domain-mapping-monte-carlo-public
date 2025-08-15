@@ -1,17 +1,32 @@
-# Domain Mapping Monte Carlo (Skeleton Repo)
+# Domain Mapping Monte Carlo (Skeleton Repository)
 
-A redacted version of my thesis project exploring Monte Carlo methods for solving partial differential equations (PDEs) in conformally mapped domains. This repository outlines the modular simulation architecture used for domain-mapped Monte Carlo solvers, including geometric reflection logic and simulation pipeline orchestration. Core numerical methods have been redacted for intellectual property reasons but full documentation and structure remain to highlight reproducibility, HPC readiness, and multi-domain adaptability.
+** High-performance, SLURM-orchestrated Monte Carlo simulation pipeline for solving PDEs in conformally mapped domains. Redacted for public release while preserving full workflow structure, HPC scalability, and reproducibility features.**
+
+A public-safe version of my thesis project exploring Monte Carlo methods for solving partial differential equations (PDEs) in complex geometries via conformal mapping. While core numerical routines are removed for intellectual property reasons, the repository retains its full orchestration, job scheduling, and modular structure to demonstrate clarity, scalability, and HPC-readiness.
 
 ---
 
-## Features
+## Key Features
 
-- Conformal mapping strategy for solving PDEs in complex domains
-- Modular architecture supporting multiple geometries and parameter sets
-- Reflection logic for 1/2, 1/4, and 1/8-plane simulations
-- SLURM-ready batch execution for HPC scaling
-- Code structured for clarity, extensibility, and reproducibility
-- Public-safe: all sensitive numerical code removed, safe for sharing
+- **Conformal mapping framework** for PDEs in complex domains.
+- **Modular architecture** supporting multiple geometries and parameter sets
+- **Reflection logic** for 1/2, 1/4, and 1/8-plane simulations
+- **SLURM-ready** batch execution for HPC scaling
+- **Reproducibility-focused** code for organization and parameter management
+- **Safe for public-sharing:** numerical stepping code redacted
+
+---
+
+## Workflow Overview
+
+1. **Generate parameters** (```generate_parms.sh```)
+    Produces a parameter sweep file (```params_list.txt```) for batch execution.
+2. **Run simulations** (```MC_quarter.slurm``` / ```MC_eighth.slurm```)
+    Submits a SLURM array job, one task per parameter set.
+3. **Visualize results** (```visualize_quarter.slurm``` / ```visualize_eighth.slurm```)
+    Post-processing scripts (Python) to visualize simulation outputs.
+4. **Orchestrate everything** (```run_all.sh```)
+    End-to-end driver for parameter generation, simulation submission, and visualization.
 
 ---
 
@@ -19,42 +34,24 @@ A redacted version of my thesis project exploring Monte Carlo methods for solvin
 
 ```text
 domain-mapping-monte-carlo/
-├── README.md
-├── Parameters/
-│ ├── create_param_grid.py
-│ └── param_sets/
-│ └── quarter_plane_set.txt
-├── Run_scripts/
-│ ├── run_all_simulations.sh
-│ └── slurm_visualize.sh
-├── Simulations/
-│ ├── simulate_reflection.py
-│ └── simulate_weighted_walks.py
-├── Fortran_kernels/
-│ ├── reflect_walk.f90
-│ └── update_weights.f90
-├── Visualization/
-│ ├── visualize_histogram.py
-│ ├── compute_error.py
-│ └── convergence_plots.py
-├── Data/
-│ ├── raw_output/
-│ └── processed_results/
-├── Utils/
-│ ├── io_helpers.py
-│ └── job_tracker.py
-└── SLURM_jobs/
-├── job_array_sim.sh
-└── logs/
+├── .gitignore
+├── generate_params.sh
+├── MC_eighth.slurm
+├── MC_quarter.slurm
+├── run_all.sh
+├── visualize_eighth.slurm
+├── visualize_quarter.slurm
+└── README.md
+
 ```
 
 ---
 
-## Disclaimer on Redacted Content
+## About This Repository
 
-This repository provides only the scaffolding and architecture of the simulation pipeline. All core stepping and numerical integration routines have been removed or replaced with placeholders to protect research code that is currently unpublished.
-
-If you're an employer or collaborator interested in the full codebase, I’m happy to provide access upon request.
+- **Purpose:** Showcase my ability to design and implement large-scale scientific computing workflows for HPC environments.
+- **Limitations:** Numerical solvers are redacted; scripts are **fundamental templates** that require the original Fortran/Python source files to execute.
+- **For Recruiters:** The structure and documentation reflect real-world HPC project practices; the full, runnable version can be provided upon request.
 
 ---
 
