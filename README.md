@@ -1,6 +1,6 @@
 # Domain Mapping Monte Carlo (Skeleton Repository)
 
-** High-performance, SLURM-orchestrated Monte Carlo simulation pipeline for solving PDEs in conformally mapped domains. Redacted for public release while preserving full workflow structure, HPC scalability, and reproducibility features.**
+**High-performance, SLURM-orchestrated Monte Carlo simulation pipeline for solving PDEs in conformally mapped domains. Redacted for public release while preserving full workflow structure, HPC scalability, and reproducibility features.**
 
 A public-safe version of my thesis project exploring Monte Carlo methods for solving partial differential equations (PDEs) in complex geometries via conformal mapping. While core numerical routines are removed for intellectual property reasons, the repository retains its full orchestration, job scheduling, and modular structure to demonstrate clarity, scalability, and HPC-readiness.
 
