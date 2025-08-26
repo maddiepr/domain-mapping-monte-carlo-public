@@ -1,0 +1,63 @@
+name: CMake / Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - 'LICENSE'
+      - 'NOTICE'
+      - 'THIRD_PARTY_NOTICES.md'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cmake-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    env:
+      CMAKE_BUILD_TYPE: Release
+      PUBLIC_SKELETON: "ON"
+      BUILD_TESTING: "ON"
+      BUILD_FORTRAN: "OFF"
+      CC: gcc
+      CXX: g++ 
+
+    steps:
+      - name: Checkout 
+        uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake g++ curl
+
+      - name: ccache (optional)
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ hashFiles('**/CMakeLists.txt') }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+
+      - name: Configure (CMake)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+            -DPUBLIC_SKELETON=${PUBLIC_SKELETON} \
+            -DBUILD_TESTING=${BUILD_TESTING} \
+            -DBUILD_FORTRAN=${BUILD_FORTRAN}
+
+      - name: Build
+        run: cmake --build build -- -j
+
+      - name: Run tests (CTest)
+        run: ctest --test-dir build --output-on-failure -j2

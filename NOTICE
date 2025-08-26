@@ -1,0 +1,7 @@
+Domain-Mapping Monte Carlo 2D - Public Skeleton
+
+This repository's contents are under the MIT License (see `LICENSE`).
+
+Scope: Selected numerical stepping/solver kernels have been intentionally redacted for IP reasons; those non-published materials are not part of this repository or its license.
+
+Third-party components included in or fetched by the build are provided under their own licenses (see `THIRD_PARTY_NOTICES.md`).

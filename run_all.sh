@@ -1,100 +1,124 @@
 #!/bin/bash
-# --------------------------------------------------------------------------
-# run_all.sh
-# Orchestrates the 2D Monte Carlo PDE workflow:
-# 1. Generate parameters
-# 2. Submit simulation job array (quarter, eighth, or both)
-# 3. Submit visualization jobs dependent on simulation completion
+# -------------------------------------------------------------
+# run_all.sh (skeleton)
+# Orchestrate the 2D Monte Carlo PDE workflow:
+#   1) Generate parameter list
+#   2) Submit MC array (quarter|eighth)
+#   3) Submit visualization array with afterok dependency
 #
 # Usage:
-#   ./run_all.sh quarter|eighth|both [--dry-run] [--params FILE] [--preview N]
+#   ./run_all.sh quarter|eighth [--dry-run] [--preview N]
+# -------------------------------------------------------------
+
+# -------------------------------------------------------------
+# Assumptions
+# - Script is invoked from the repository root; working dir is fixed via sbatch --chdir.
+# - Parameter file `params_list.txt` resides at repo root and contains seven whitespace-separated fields:
+#   TF  D  X0  Y0  NSTEPS  NREALS  NBINS
+# - Cluster-specific configuration (account/partition/modules/email) is defined inside:
+#   scripts/slurm/MC_<geometry>.slurm and scripts/slurm/visualize_<geometry>.slurm
 #
-# Notes:
-# - Environment-specific SLURM settings are inside MC_*.slurm and visualize_*.slurm
-# - No sensitive information is included here
-# --------------------------------------------------------------------------
+# Dependencies (relative to repo root)
+# - generate_params.sh (executable)
+# - scripts/slurm/MC_quarter.slurm, scripts/slurm/MC_eighth.slurm
+# - scripts/slurm/visualize_quarter.slurm, scripts/slurm/visualize_eighth.slurm
+#
+# Flags
+# - --dry-run   : print sbatch commands only (no submissions, no side effects)
+# - --preview N : print the first N lines of params_list.txt for sanity-checking
+#
+# Exit behavior
+# - Exits non-zero if required files are missing, if params_list.txt is empty,
+#   or if submission fails; otherwise exits 0 after successful submissions.
+#
+# Security/PII
+# - This is a public-safe skeleton: avoid usernames, emails, absolute paths, or account names here.
+#   Keep any environment-specific details in the .slurm templates.
+# -------------------------------------------------------------
 
-set -eur pipefail   # stop on errors, unset vars, or failed pips
+set -euo pipefail
 
-# Default paths and flags
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-ROOT_DIR="${SCRIPT_DIR}"  # adjust if you place this elsewhere
-PARAMS_FILE="${ROOT_DIR}/params_list.txt"
-DRY_RUN=0
-PREVIEW_LINES=0
+usage() { echo "Usage: $0 quarter|eighth [--dry-run] [--preview N]"; exit 1; }
 
-# Helpers for consistent output and dry-run support
-info()  { echo "[INFO] $*"; }
-warn()  { echo "[WARN] $*" >&2; }
-error() { echo "[ERROR] $*" >&2; exit 1; }
-
-# --- Parse arguments ---
-[[ $# -ge 1 ]] || { echo "Usage: $0 quarter|eighth|both [...]"; exit 1; }
+# --- Geometry (required) ---
+[[ $# -ge 1 ]] || usage
 GEOMETRY="$1"; shift || true
-case "$GEOMETRY" in quarter|eighth|both) ;; *) error "Geometry must be quarter, eighth, or both" ;; esac
+case "$GEOMETRY" in quarter|eighth) ;; -h|--help) usage ;; *) echo "[ERROR] geometry must be 'quarter' or 'eighth'"; usage ;; esac
+
+# --- Optional flags ---
+DRY_RUN=0
+PREVIEW=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dry-run) DRY_RUN=1; shift ;;
-    --params) PARAMS_FILE="$2"; shift 2 ;;
-    --preview) PREVIEW_LINES="${2:-5}"; shift 2 ;;
-    -h|--help) sed -n '1,20p' "$0"; exit 0 ;;
-    *) error "Unknown option: $1" ;;
+    --preview) PREVIEW="${2:-5}"; shift 2 ;;
+    -h|--help) usage ;;
+    *) echo "[ERROR] Unknown option: $1"; usage ;;
   esac
 done
 
-# --- Provenance info ---
-GIT_REV="(no git)"
-if command -v git >/dev/null && git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null; then
-  GIT_REV="$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo '(no git)')"
-fi
-info "Provenance: $(date) | host=$(hostname) | git=$GIT_REV"
+echo "[INFO] Running workflow for: $GEOMETRY"
+echo "[INFO] Provenance: $(date) | host=$(hostname)"
+# GIT_REV=$(git -C "$ROOT_DIR" rev-parse --short HEAD 2>/dev/null || echo "n/a"); echo "[INFO] git=$GIT_REV"  # optional
 
-# --- Generate params if default file is used ---
+# --- Paths ---
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
+ROOT_DIR="${SCRIPT_DIR}"                       # keep this file at repo root
+PARAMS_FILE="${ROOT_DIR}/params_list.txt"
 GEN_PARAMS="${ROOT_DIR}/generate_params.sh"
-if [[ "$PARAMS_FILE" == "${ROOT_DIR}/params_list.txt" && -x "$GEN_PARAMS" ]]; then
-  info "Generating parameter list..."
-  run_or_echo "bash \"$GEN_PARAMS\""
+MC_SLURM="${ROOT_DIR}/scripts/slurm/MC_${GEOMETRY}.slurm"
+VIS_SLURM="${ROOT_DIR}/scripts/slurm/visualize_${GEOMETRY}.slurm"
+
+# --- Step 1: Generate parameters ---
+# Generate or refresh the parameter sweep (idempotent). If generate_params.sh is not present
+# or is intentionally skipped, the script will proceed using the existing params_list.txt.
+if [[ -x "$GEN_PARAMS" ]]; then
+  echo "[INFO] Generating parameter list..."
+  bash "$GEN_PARAMS"
+else
+  echo "[WARN] $GEN_PARAMS not found or not executable; skipping generation."
 fi
 
-# Verify params file exists and has content
-[[ -f "$PARAMS_FILE" ]] || error "Params file not found: $PARAMS_FILE"
-NUM_LINES=$(wc -l < "$PARAMS_FILE" | tr -d ' ')
-[[ "$NUM_LINES" -ge 1 ]] || error "Params file is empty"
-info "Params: $PARAMS_FILE ($NUM_LINES jobs)"
-[[ "$PREVIEW_LINES" -gt 0 ]] && head -n "$PREVIEW_LINES" "$PARAMS_FILE"
+[[ -f "$PARAMS_FILE" ]] || { echo "[ERROR] Missing $PARAMS_FILE"; exit 1; }
+num_lines=$(wc -l < "$PARAMS_FILE" | tr -d ' ')
+[[ "$num_lines" -ge 1 ]] || { echo "[ERROR] $PARAMS_FILE has zero lines"; exit 1; }
 
-# Ensure logs directory exists
+echo "[INFO] Params: $PARAMS_FILE  (jobs: $num_lines)"
+if [[ "$PREVIEW" -gt 0 ]]; then
+  echo "[INFO] Preview (first $PREVIEW line(s)):"
+  head -n "$PREVIEW" "$PARAMS_FILE" || true
+fi
+
 mkdir -p "${ROOT_DIR}/logs"
 
-# --- Submit a single geometry's workflow ---
-submit_pipeline() {
-  local geom="$1"
-  local mc_slurm="${ROOT_DIR}/MC_${geom}.slurm"
-  local vis_slurm="${ROOT_DIR}/visualize_${geom}.slurm"
-  [[ -f "$mc_slurm"  ]] || error "Missing SLURM script: $mc_slurm"
-  [[ -f "$vis_slurm" ]] || error "Missing SLURM script: $vis_slurm"
+# --- Check SLURM templates ---
+[[ -f "$MC_SLURM"  ]] || { echo "[ERROR] Not found: $MC_SLURM"; exit 1; }
+[[ -f "$VIS_SLURM" ]] || { echo "[ERROR] Not found: $VIS_SLURM"; exit 1; }
 
-  info "Submitting Monte Carlo array for '$geom'..."
-  if [[ $DRY_RUN -eq 1 ]]; then
-    echo "DRY-RUN: sbatch --array=0-$((NUM_LINES - 1)) $mc_slurm"
-    echo "DRY-RUN: sbatch --dependency=afterok:<MC_JOB_ID> --array=0-$((NUM_LINES - 1)) $vis_slurm"
-    return
-  fi
+# --- Dry-run (print commands only) ---
+# Dry-run mode prints the exact sbatch commands that would be executed, including
+# array ranges and dependency wiring (afterok:<MC_JOB_ID>). Use this to validate
+# geometry selection, parameter counts, and submission order without touching the scheduler.
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo "DRY-RUN: sbatch --chdir=\"$ROOT_DIR\" --array=0-$((num_lines - 1)) \"$MC_SLURM\""
+  echo "DRY-RUN: sbatch --chdir=\"$ROOT_DIR\" --dependency=afterok:<MC_JOB_ID> --array=0-$((num_lines - 1)) \"$VIS_SLURM\""
+  echo "[INFO] Dry-run complete."
+  exit 0
+fi
 
-  MC_OUT=$(sbatch --array=0-$((NUM_LINES - 1)) "$mc_slurm")
-  MC_JOB_ID=$(awk '{print $4}' <<< "$MC_OUT")
-  [[ -n "$MC_JOB_ID" ]] || error "Could not parse MC job ID"
-  info "$MC_OUT"
+# --- Submit MC array ---
+# Submit the Monte Carlo array. One array index corresponds to one line in params_list.txt.
+# The .slurm script is responsible for reading SLURM_ARRAY_TASK_ID and mapping it to parameters.
+echo "[INFO] Submitting MC ${GEOMETRY} array..."
+MC_SUBMIT_OUT=$(sbatch --chdir="$ROOT_DIR" --array=0-$((num_lines - 1)) "$MC_SLURM")
+echo "[INFO] $MC_SUBMIT_OUT"
+MC_JOB_ID=$(awk '{print $4}' <<< "$MC_SUBMIT_OUT")
+[[ -n "${MC_JOB_ID:-}" ]] || { echo "[ERROR] Could not parse MC job ID"; exit 1; }
 
-  info "Submitting visualization (afterok:$MC_JOB_ID)..."
-  run_or_echo "sbatch --dependency=afterok:$MC_JOB_ID --array=0-$((NUM_LINES - 1)) \"$vis_slurm\""
-}
+# --- Submit visualization with dependency ---
+# Submit the visualization array with an afterok dependency on the MC array job ID.
+# This guarantees post-processing starts only after all simulation tasks complete successfully.
+echo "[INFO] Submitting visualization (afterok:$MC_JOB_ID)..."
+sbatch --chdir="$ROOT_DIR" --dependency=afterok:"$MC_JOB_ID" --array=0-$((num_lines - 1)) "$VIS_SLURM" >/dev/null
 
-# --- Run the workflow ---
-case "$GEOMETRY" in
-  quarter) submit_pipeline "quarter" ;;
-  eighth)  submit_pipeline "eighth" ;;
-  both)    submit_pipeline "quarter"; submit_pipeline "eighth" ;;
-esac
-
-info "Workflow submitted for: $GEOMETRY"
+echo "[INFO] Workflow submitted successfully for $GEOMETRY."

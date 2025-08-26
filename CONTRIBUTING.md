@@ -1,81 +1,103 @@
 # Contributing Guidelines
 
-Thank you for your interest in this project! While this repository is primarily maintained as part of a personal portfolio, contributions, and feedback are welcome under the guidelines below.
+Thank you for your interest! This repo is a **public, redacted skeleton** of a Monte Carlo framework for PDEs in conformally mapped domains. While some numerical kernels are intentionally omitted, contributions that improve the **build, tests, CI, SLURM ergonomics, docs, and example scaffolding** are welcome.
 
 ---
 
-## Project Overview
+## Scope & Redactions
 
-This repository presents a redacted version of a Monte Carlo simulation framework for solving PDEs in conformally mapped domains. Core numerical methods have been removed for IP protection, but the architecture, simulation flow, and domain-specific logic remain.
+- **In scope:** C++ build system (CMake), unit tests (GoogleTest/CTest), CI workflows, SLURM scripts, docs/readme, example parameter generation.
+- **Out of scope:** Core/redacted numerical stepping & proprietary solver code (PRs changing those interfaces will be declined).
+- **For transparency:** The repository mirrors real HPC project structure; a full runnable version can be reviewed privately on request.
 
 ---
 
 ## Getting Started
 
-To set up the project locally:
+### Clone & build (C++)
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/maddiepr/domain-mapping-monte-carlo.git
-   cd domain-mapping-monte-carlo
-   ```
+```bash
+git clone https://github.com/maddiepr/domain-mapping-monte-carlo-public.git
+cd domain-mapping-monte-carlo-public
+mkdir -p build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . -j
+ctest --output-on-failure -j
+```
 
-2. (Optional) Create and activate a virtual environment:
-    ```bash
-    python -m venv .venv
-    source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-    ```
+### SLURM validation (no submission)
 
-3. Install dependencies:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    
-For Fortran components, ensure you have a working Fortran compiler (e.g., ```gfortran```), and follow any additional build instructions in the ```fortran/``` directory.
+```bash
+./generate_params.sh
+sbatch --test-only scripts/slurm/MC_quarter.slurm
+sbatch --test-only scripts/slurm/MC_eighth.slurm
+```
+
+**Note** `python/` visualizations are being prepared for public release. Please don't open issues about missing Python notebooks yet.
+
+### Fortran (optional references)
+
+If you're working with the reference solvers:
+```bash
+gfortran -O3 -o mc_quarter fortran/src/mc_quarter.f
+gfortran -O3 -o mc_eighth fortran/src/mc_eighth.f
+```
 
 ---
 
 ## How to Contribute
 
-If you'd like to suggest changes or improvements:
-- Fork the repository and create a feature branch:
-- Make your changes in a clear, modular way
-- Submit a pull request with a concise description of your contribution
+1. **Fork** the repo and create a topic branch:
+    ```bash
+    git checkout -b chore/ci-fix    # or docs/... , test/... fix/...
+    ```
+2. **Make small focused changes** with clear commit messages
+   (Conventional Commits appreciated: `docs:`, `tests:`, `ci:`, `fix:`, `chore:`).
+3. **Include tests** when changing C++ behavior or SLURM logic.
+4. **Run locally:** build + `ctest`; validate SLURM with `--test-only`.
+5. **Open a PR** with a concise description and rationale.
 
-Pull requests will be reviewed as time allows. Since this is a personal academic project, turnaround may vary.
+PRs are reviewed as time allows (personal project).
 
 ---
 
 ## Code Style
 
-- Python: Follow PEP8 conventions
-- Fortran: Use modular layout and comment major subroutines
-- Shell/SLURM: Document scripts with in-line comments
+- **C++17:** header-only where sensible; `#pragma once`; prefer `std::` facilities; keep functions small & testable.
+- **Formatting:** if a `.clang-format` exists, run it; otherwise, match surrounding style.
+- **Tests:** use GoogleTest; keep tests deterministic (fixed seeds when checking RNG properties).
+- **Shell/SLURM:** comment inputs/outputs; avoid cluster-specific hard-coding; support `--test-only`.
+
+(If you propose adding a formatter or CI lint step, include the config in your PR.)
 
 ---
 
 ## Issues & Feedback
 
-Use the Issues tab to:
-- Report bugs (e.g., build errors, broken logic)
-- Ask questions about the project structure or methodology
-- Suggest enhancements or documentation improvements
+Please include:
+- Repro steps (commands, OS/comilers, cmake version)
+- Expected vs. actual behavior
+- `CMakeCache.txt` and relevant build logs (trimmed)
+- For SLURM: show `sbatch --test-only` output
+
+Feature requests are welcome if they fit the **in-scope** areas above.
+
+---
+
+## Code of Conduct
+
+Be respectful and constructive. Disagreements are fine; harassment is not.
 
 --- 
 
-## Notes for Employers & Reviewers
+## License & Third-Party Code
 
-While the full source code is not published due to academic IP concerns, I'm happy to walk through the complete version upon request in an interview or private consersation.
+By contributing, you agree your changes are licensed under the repository's **MIT License** (see `LICENSE`). Third party components (e.g., GoogleTest) remain under their respective licenses.
 
-Feel free to contact me via [LinkedIn](www.linkedin.com/in/madeline-preston) or GitHub issues for context or collaboration.
+---
 
-Thank you!
+## Contact
 
+**Maddie Preston**
 
-
-
-
-
-
-
-
+[LinkedIn:](www.linkedin.com/in/madeline-preston)
