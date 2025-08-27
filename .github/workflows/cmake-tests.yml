@@ -34,6 +34,9 @@ jobs:
     steps:
       - name: Checkout 
         uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
 
       - name: Install build deps
         run: |
@@ -49,15 +52,16 @@ jobs:
             ccache-${{ runner.os }}-
 
       - name: Configure (CMake)
-        run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
-            -DPUBLIC_SKELETON=${PUBLIC_SKELETON} \
-            -DBUILD_TESTING=${BUILD_TESTING} \
-            -DBUILD_FORTRAN=${BUILD_FORTRAN}
+        run: make -S . -B -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          # cmake -S . -B build -G Ninja \
+          #   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
+          #   -DPUBLIC_SKELETON=${PUBLIC_SKELETON} \
+          #   -DBUILD_TESTING=${BUILD_TESTING} \
+          #   -DBUILD_FORTRAN=${BUILD_FORTRAN}
 
       - name: Build
-        run: cmake --build build -- -j
+        run: cmake --build build --config Release -j 3
 
-      - name: Run tests (CTest)
-        run: ctest --test-dir build --output-on-failure -j2
+      - name: CTest (verbose)
+        run: |
+          ctest --test-dir build --output-on-failure -j 2
