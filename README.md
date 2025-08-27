@@ -1,4 +1,5 @@
-# Domain Mapping Monte Carlo (Skeleton Repository)
+# Domain Mapping Monte Carlo (Public Repository)
+[![CMake / Tests](https://github.com/maddiepr/domain-mapping-monte-carlo-public/actions/workflows/cmake-tests.yml/badge.svg?branch=main)](https://github.com/maddiepr/domain-mapping-monte-carlo-public/actions/workflows/cmake-tests.yml)
 
 
 **High-performance, SLURM-orchestrated Monte Carlo pipeline for solving PDEs in conformally mapped domains.**
@@ -24,24 +25,24 @@
 ## Quickstart (public-safe)
 
 1. Build & test the C++ components
-```bash
-mkdir -p build && cd build
-cmake -DC_MAKE_BUILD_TYPE=Release ..
-cmake --build . -j
-ctest --output-on-failure -j
-```
+    ```bash
+    mkdir -p build && cd build
+    cmake -DC_MAKE_BUILD_TYPE=Release ..
+    cmake --build . -j
+    ctest --output-on-failure -j
+    ```
 
 2. Generate parameter sweeps
-```bash
-./generate_params.sh
-head -n 5 params_list.txt   # peek at the first few tasks
-```
+    ```bash
+    ./generate_params.sh
+    head -n 5 params_list.txt   # peek at the first few tasks
+    ```
 
 3. SLURM dry-run (validates scripts without submitting)
-```bash
-sbatch --test-only ../scripts/slurm/MC_quarter.slurm
-sbatch --test-only ../scripts/slurm/MC_eighth.slurm
-```
+    ```bash
+    sbatch --test-only ../scripts/slurm/MC_quarter.slurm
+    sbatch --test-only ../scripts/slurm/MC_eighth.slurm
+    ```
 
 **Note**: Active modules today: `cpp/`, `scripts/`, `tests/`
 `python/` visualization notebooks/scripts are being prepared for public release. 
