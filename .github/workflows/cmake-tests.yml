@@ -22,28 +22,34 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     env:
       CMAKE_BUILD_TYPE: Release
       PUBLIC_SKELETON: "ON"
       BUILD_TESTING: "ON"
       BUILD_FORTRAN: "OFF"
       CC: gcc
-      CXX: g++ 
+      CXX: g++
 
     steps:
-      - name: Checkout 
+      - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
           fetch-depth: 0
 
       - name: Install build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake g++ curl
+          sudo apt-get install -y ninja-build ccache g++ cmake curl
 
-      - name: ccache (optional)
+      - name: Print tool versions
+        run: |
+          cmake --version
+          g++ --version
+          ninja --version || true
+          ccache --version || true
+
+      - name: Restore ccache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ccache
@@ -52,16 +58,33 @@ jobs:
             ccache-${{ runner.os }}-
 
       - name: Configure (CMake)
-        run: make -S . -B -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-          # cmake -S . -B build -G Ninja \
-          #   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} \
-          #   -DPUBLIC_SKELETON=${PUBLIC_SKELETON} \
-          #   -DBUILD_TESTING=${BUILD_TESTING} \
-          #   -DBUILD_FORTRAN=${BUILD_FORTRAN}
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+          -DPUBLIC_SKELETON=${PUBLIC_SKELETON}
+          -DBUILD_TESTING=${BUILD_TESTING}
+          -DBUILD_FORTRAN=${BUILD_FORTRAN}
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
 
       - name: Build
-        run: cmake --build build --config Release -j 3
+        run: cmake --build build -j 3
 
       - name: CTest (verbose)
-        run: |
-          ctest --test-dir build --output-on-failure -j 2
+        run: ctest --test-dir build --output-on-failure -j 2
+
+      - name: Upload CMake logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cmake-logs
+          path: |
+            build/CMakeFiles/CMakeOutput.log
+            build/CMakeFiles/CMakeError.log
+
+      - name: Upload LastTest.log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctest-logs
+          path: build/Testing/Temporary/LastTest.log
